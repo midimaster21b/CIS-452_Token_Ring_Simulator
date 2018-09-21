@@ -30,9 +30,8 @@ int request_num_endpoints(void) {
   return num_endpoints;
 }
 
-endpoint create_endpoint(int id) {
+endpoint *create_endpoint(int id) {
   endpoint retval;
 
-
-  return retval;
+  return NULL;
 }
