@@ -70,4 +70,14 @@ endpoint *create_endpoint(int id);
  */
 endpoint_list *endpoint_list_add(endpoint_list *endpoint_list_head, endpoint *token_endpoint);
 
+/** @brief Handles the resource cleanup for an endpoint list
+ *
+ *  Closes all open file handles and free's all space consumed
+ *  by an endpoint list.
+ *
+ *  @param endpoint_list_head A pointer to an element in the list to be recycled.
+ *  @return Void.
+ */
+void endpoint_list_recycle(endpoint_list *endpoint_list_head);
+
 #endif // __ENDPOINT_H__

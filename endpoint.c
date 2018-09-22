@@ -174,3 +174,44 @@ endpoint_list *endpoint_list_add(endpoint_list *endpoint_list_head, endpoint *to
     }
   }
 }
+
+void endpoint_list_recycle(endpoint_list *endpoint_list_head) {
+  endpoint_list *temp = endpoint_list_head;
+  endpoint_list *temp_next = temp;
+
+  // If an empty list was passed, return
+  if(temp == NULL) {
+    return;
+  }
+
+  // Otherwise, setup the while loop
+  else {
+    temp_next = temp->next;
+    temp->next = NULL;
+    temp = temp_next;
+  }
+
+  while(temp != NULL) {
+    // Retain a handle to the next element in the list
+    temp_next = temp->next;
+
+    // Close token pipe handles
+    close(temp->endp->token_pipe[0]);
+    close(temp->endp->token_pipe[1]);
+
+    // Close admin write pipe handles
+    close(temp->endp->admin_wr_pipe[0]);
+    close(temp->endp->admin_wr_pipe[1]);
+
+    // Close admin read pipe handles
+    close(temp->endp->admin_wr_pipe[0]);
+    close(temp->endp->admin_wr_pipe[1]);
+
+    // Free the memory used
+    free(temp->endp);
+    free(temp);
+
+    // Move to the next element
+    temp = temp_next;
+  }
+}
