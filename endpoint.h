@@ -22,10 +22,11 @@ typedef struct endpoint {
   int write_endpoint;
 } endpoint;
 
-// Singly linked list for management purposes
+// Doubly linked list for management purposes
 typedef struct endpoint_list {
-  endpoint endp;
+  endpoint *endp;
   struct endpoint_list *next;
+  struct endpoint_list *prev;
 } endpoint_list;
 
 /** @brief Requests and returns the desired number of endpoints specified by the user.

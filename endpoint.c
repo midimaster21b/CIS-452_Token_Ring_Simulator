@@ -10,8 +10,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "endpoint.h"
+
+endpoint_list *endpoint_list_head = NULL;
 
 int request_num_endpoints(void) {
   // Add one to endpoint string length to ensure string is null terminated
