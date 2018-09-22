@@ -12,14 +12,18 @@
 #ifndef __ENDPOINT_H__
 #define __ENDPOINT_H__
 
+#define PIPE_READ_INDEX 0
+#define PIPE_WRITE_INDEX 1
+
 #define ENDPOINT_STRING_LENGTH 10
 
 // Single endpoint
 typedef struct endpoint {
   int pid;
   int token_id;
-  int read_endpoint;
-  int write_endpoint;
+  int token_pipe[2];
+  int admin_wr_pipe[2];
+  int admin_rd_pipe[2];
 } endpoint;
 
 // Doubly linked list for management purposes

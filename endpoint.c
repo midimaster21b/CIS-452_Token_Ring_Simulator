@@ -33,10 +33,22 @@ int request_num_endpoints(void) {
 
 endpoint *create_endpoint(int id) {
 
-  int pipe_endpoints[2];
+  int admin_rd_pipe[2];
+  int admin_wr_pipe[2];
+  int token_pipe[2];
 
-  // Create a pipe and handle pipe creation errors
-  if(pipe(pipe_endpoints) != 0) {
+  // Create admin write pipe and handle pipe creation errors
+  if(pipe(admin_wr_pipe) != 0) {
+    return NULL;
+  }
+
+  // Create admin read pipe and handle pipe creation errors
+  if(pipe(admin_rd_pipe) != 0) {
+    return NULL;
+  }
+
+  // Create token pipe and handle pipe creation errors
+  if(pipe(token_pipe) != 0) {
     return NULL;
   }
 
@@ -52,9 +64,17 @@ endpoint *create_endpoint(int id) {
 
   retval->pid = pid;
   retval->token_id  = id;
-  retval->read_endpoint;
-  retval->write_endpoint;
 
+  // Copy pipe data into struct
+  memcpy(retval->token_pipe, token_pipe, sizeof(retval->token_pipe));
+  memcpy(retval->admin_wr_pipe, admin_wr_pipe, sizeof(retval->admin_wr_pipe));
+  memcpy(retval->admin_rd_pipe, admin_rd_pipe, sizeof(retval->admin_rd_pipe));
+
+  /* retval->token_pipe = memcpy(retval->token_pipe, token_pipe, sizeof(retval->token_pipe)); */
+  /* retval->admin_wr_pipe = memcpy(retval->admin_wr_pipe, admin_wr_pipe, sizeof(retval->admin_wr_pipe)); */
+  /* retval->admin_rd_pipe = memcpy(retval->admin_rd_pipe, admin_rd_pipe, sizeof(retval->admin_rd_pipe)); */
+
+  // Return newly created struct
   return retval;
 }
 
