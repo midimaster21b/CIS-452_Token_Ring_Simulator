@@ -14,8 +14,6 @@
 
 #include "endpoint.h"
 
-endpoint_list *endpoint_list_head = NULL;
-
 int request_num_endpoints(void) {
   // Add one to endpoint string length to ensure string is null terminated
   // SEE: fgets documentation for reasoning
@@ -34,7 +32,28 @@ int request_num_endpoints(void) {
 }
 
 endpoint *create_endpoint(int id) {
-  endpoint retval;
 
-  return NULL;
+  int pipe_endpoints[2];
+
+  // Create a pipe and handle pipe creation errors
+  if(pipe(pipe_endpoints) != 0) {
+    return NULL;
+  }
+
+  // Create a new process
+  int pid = fork();
+
+  if(pid < 0) {
+    return NULL;
+  }
+
+  // Get space for storing endpoint descriptor
+  endpoint *retval = malloc(sizeof(endpoint));
+
+  retval->pid = pid;
+  retval->token_id  = id;
+  retval->read_endpoint;
+  retval->write_endpoint;
+
+  return retval;
 }
