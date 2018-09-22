@@ -57,3 +57,100 @@ endpoint *create_endpoint(int id) {
 
   return retval;
 }
+
+endpoint_list *endpoint_list_add(endpoint_list *endpoint_list_head, endpoint *token_endpoint) {
+  // Create an endpoint list struct for the supplied endpoint
+  endpoint_list *token_endpoint_list_item = malloc(sizeof(endpoint_list));
+  token_endpoint_list_item->endp = token_endpoint;
+  token_endpoint_list_item->next = NULL;
+  token_endpoint_list_item->prev = NULL;
+
+  // Empty list
+  if(endpoint_list_head) {
+
+    // Item loops back to itself when it is the only item present
+    token_endpoint_list_item->next = token_endpoint_list_item;
+    token_endpoint_list_item->prev = token_endpoint_list_item;
+
+    // Assign the created endpoint to supplied list
+    endpoint_list_head = token_endpoint_list_item;
+
+    // Return pointer to first(and only) item in list
+    return endpoint_list_head;
+
+  } else {
+    // Create a temporary head pointer
+    endpoint_list *temp_head = endpoint_list_head;
+    endpoint_list *temp = temp_head;
+
+    // If not the only item in the list
+    if(temp->prev != temp) {
+       // Find lowest token_id endpoint in list
+       while(temp->prev->endp->token_id <= temp->endp->token_id) {
+	 temp = temp->prev;
+       }
+
+       // Assign new head to endpoint list item with lowest token id
+       temp_head = temp;
+    }
+
+    // If the supplied endoint is greater than the current lowest
+    // token_id, advance one to set up next iteration loop (so temp != temp_head)
+    if(token_endpoint->token_id > temp->endp->token_id) {
+      // Advance one item
+      temp = temp->next;
+    }
+
+    // Iterate through currently available nodes to find appropriate
+    // place to insert supplied endpoint. Will end one endpoint list item
+    // past the desired location (just after correct insertion location) or
+    // at the last item in the list if the item should be appended.
+    while(temp->next != temp_head && temp->endp->token_id < token_endpoint->token_id) {
+      temp = temp->next;
+    }
+
+    // If we end up just past the correct spot, insert the new endpoint
+    // NOTE: ASSUMES COHERENT LIST
+    // NOTE: List insertion fails if item_a->next = item_b and item_b->prev != item_a
+    // NOTE: This conditional must come first for the case of second to last item insertion
+    if(temp->endp->token_id >= token_endpoint->token_id) {
+      // Set appropriate values for next and previous of item to be inserted
+      token_endpoint_list_item->prev = temp->prev;
+      token_endpoint_list_item->next = temp;
+
+      // Set the previous item's next attribute to point to inserted endpoint list item
+      temp->prev->next = token_endpoint_list_item;
+
+      // Set the temp's previous attribute to point to the inserted endpoint list item
+      temp->prev = token_endpoint_list_item;
+
+      // If item was inserted prior to first item positionally,
+      // return new token endpoint list item. Otherwise return
+      // the found previously found lowest token_id list item.
+      if(temp == temp_head) {
+	return token_endpoint_list_item;
+
+      } else {
+	return temp_head;
+
+      }
+    }
+
+    // If this is the last item in the list or the second item added.
+    else if(temp->next == temp_head) {
+
+      // Assign appropriate links for new endpoint list item
+      token_endpoint_list_item->prev = temp;
+      token_endpoint_list_item->next = temp_head;
+
+      // Assign next link for current
+      temp->next = token_endpoint_list_item;
+
+      // Assign prev link for temp_head
+      temp_head->prev = token_endpoint_list_item;
+
+      // Return new head
+      return temp_head;
+    }
+  }
+}

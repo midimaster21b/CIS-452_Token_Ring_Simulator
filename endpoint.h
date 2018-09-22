@@ -54,4 +54,16 @@ int request_num_endpoints(void);
  */
 endpoint *create_endpoint(int id);
 
+/** @brief Adds token endpoint supplied to the supplied endpoint list.
+ *
+ *  Creates an endpoint_list struct for the supplied endpoint
+ *  and inserts it into the appropriate place in the supplied
+ *  endpoint list. REQUIRES A COHERENT LIST BE SUPPLIED!!!
+ *
+ *  @param endpoint_list_head A pointer to an element in the list to be modified.
+ *  @param token_endpoint The endpoint you'd like added to the supplied list.
+ *  @return The endpoint_list struct containing the endpoint with the lowest token_id in the list
+ */
+endpoint_list *endpoint_list_add(endpoint_list *endpoint_list_head, endpoint *token_endpoint);
+
 #endif // __ENDPOINT_H__
