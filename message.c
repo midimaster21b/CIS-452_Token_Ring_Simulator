@@ -9,6 +9,8 @@
  *  @bug No known bugs.
  */
 
+#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "message.h"
@@ -27,11 +29,16 @@ message *message_create(int destination, char *body) {
   // Copy the body string into the message struct
   strncpy(retval->body, body, MESSAGE_MAX_BODY_LENGTH - 1);
 
+  // Get the header string
+  char *header = malloc(sizeof(MESSAGE_MAX_HEADER_LENGTH));
+  sprintf(header, "%d", destination);
+
   // Fill in the header of the message
-  strncpy(retval->header, itoa(destination), MESSAGE_MAX_HEADER_LENGTH - 1);
+  strncpy(retval->header, header, MESSAGE_MAX_HEADER_LENGTH - 1);
+  free(header);
 
   // Assign a message id to the message
-  retval->id = msg_count++;
+  retval->message_id = msg_count++;
 
   // Return the newly created message
   return retval;

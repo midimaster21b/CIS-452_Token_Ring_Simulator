@@ -1,3 +1,3 @@
 
 all:
-	gcc token_ring.c endpoint.c -o token_ring
+	gcc token_ring.c endpoint.c message.c -o token_ring
