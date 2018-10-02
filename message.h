@@ -34,7 +34,9 @@ typedef struct message_queue {
  *
  *  Creates a token ring message to be passed around the
  *  token ring network. The function returns a pointer to a
- *  new message on success or a NULL pointer on failure.
+ *  new message on success or a NULL pointer on failure. If
+ *  a negative destination is supplied, a blank message will
+ *  be created.
  *
  *  @param destination The token ring destination endpoint id.
  *  @param body The body of the message to be sent.

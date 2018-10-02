@@ -26,18 +26,20 @@ message *message_create(int destination, char *body) {
     return NULL;
   }
 
-  // Copy the body string into the message struct
-  /* retval->body = malloc(MESSAGE_MAX_BODY_LENGTH); */
-  strncpy(retval->body, body, MESSAGE_MAX_BODY_LENGTH - 1);
+  // if non-blank message desired (zero or positive destination supplied)
+  if(destination >= 0) {
+    // Get the header string
+    sprintf(retval->header, "%d", destination);
 
-  // Get the header string
-  /* char *header = malloc(sizeof(MESSAGE_MAX_HEADER_LENGTH)); */
-  /* retval->header = malloc(sizeof(MESSAGE_MAX_HEADER_LENGTH)); */
-  sprintf(retval->header, "%d", destination);
+    // Copy the body string into the message struct
+    strncpy(retval->body, body, MESSAGE_MAX_BODY_LENGTH - 1);
+  }
 
-  // Copy string into message struct and free intermediary
-  /* strncpy(retval->header, header, MESSAGE_MAX_HEADER_LENGTH - 1); */
-  /* free(header); */
+  // Else create a blank message
+  else {
+    retval->header[0] = '\0';
+    retval->body[0] = '\0';
+  }
 
   // Assign a message id to the message
   retval->message_id = msg_count++;
