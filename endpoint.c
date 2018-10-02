@@ -103,15 +103,15 @@ endpoint_list *endpoint_list_add(endpoint_list *endpoint_list_head, endpoint *to
     endpoint_list *temp_head = endpoint_list_head;
     endpoint_list *temp = temp_head;
 
-    // If not the only item in the list
+    // If 2 or more items in the list already
     if(temp->prev != temp) {
-       // Find lowest token_id endpoint in list
-       while(temp->prev->endp->token_id <= temp->endp->token_id) {
-	 temp = temp->prev;
-       }
+      // Find lowest token_id endpoint in list
+      while(temp->prev->endp->token_id <= temp->endp->token_id) {
+	temp = temp->prev;
+      }
 
-       // Assign new head to endpoint list item with lowest token id
-       temp_head = temp;
+      // Assign new head to endpoint list item with lowest token id
+      temp_head = temp;
     }
 
     // If the supplied endoint is greater than the current lowest
@@ -152,7 +152,6 @@ endpoint_list *endpoint_list_add(endpoint_list *endpoint_list_head, endpoint *to
 
       } else {
 	return temp_head;
-
       }
     }
 
