@@ -214,3 +214,15 @@ void endpoint_list_recycle(endpoint_list *endpoint_list_head) {
     temp = temp_next;
   }
 }
+
+void endpoint_list_print(endpoint_list *head) {
+  endpoint_list *temp = head;
+
+  printf("Found token(%p) id: %d (%p)\n", temp, temp->endp->token_id, &(temp->endp->token_id));
+
+  while(temp->next != head) {
+    temp = temp->next;
+
+    printf("Found token(%p) id: %d (%p)\n", temp, temp->endp->token_id, &(temp->endp->token_id));
+  }
+}

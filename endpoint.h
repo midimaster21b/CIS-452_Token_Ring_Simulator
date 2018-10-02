@@ -80,4 +80,14 @@ endpoint_list *endpoint_list_add(endpoint_list *endpoint_list_head, endpoint *to
  */
 void endpoint_list_recycle(endpoint_list *endpoint_list_head);
 
+/** @brief Prints the token id's present in the list
+ *
+ *  Print the token ID's from the endpoints in the supplied
+ *  endpoint list.
+ *
+ *  @param head A pointer to an element in the list to be printed.
+ *  @return Void.
+ */
+void endpoint_list_print(endpoint_list *head);
+
 #endif // __ENDPOINT_H__
