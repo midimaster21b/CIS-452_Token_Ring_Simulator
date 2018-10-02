@@ -11,14 +11,19 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "endpoint.h"
+#include "message.h"
 
 #define MESSAGE_BUFFER_SIZE 1000
+
+void *token_ring_passer(void *endpoint_descriptor);
 
 int child_process = 0;
 int token_id = -1;
 int process_pid = -1;
+pthread_t admin_thread, token_thread;
 
 int main() {
   int num_endpoints;
@@ -49,11 +54,14 @@ int main() {
 
   // Create the appropriate endpoints
   for(x=0; x<num_endpoints; x++) {
+    printf("Creating endpoint %d...\n", x);
+
     temp_endpoint = create_endpoint(x);
 
     // Handle error in endpoint creation
     if(temp_endpoint == NULL) {
       // Clean up any and all resources used and report the error to the user
+      printf("Error: Unable to create endpoint.\n");
     }
 
     // Child behavior
@@ -88,6 +96,8 @@ int main() {
       free(admin_wr_pipes);
       free(admin_rd_pipes);
 
+      pthread_create(&token_thread, NULL, token_ring_passer, temp_endpoint);
+
       // Exit the for loop
       break;
     }
@@ -103,33 +113,40 @@ int main() {
       admin_rd_pipes[x] = temp_endpoint->admin_rd_pipe[PIPE_READ_INDEX];
 
       // Close unused pipes
-      close(temp_endpoint->admin_wr_pipe[PIPE_READ_INDEX]);
-      close(temp_endpoint->admin_rd_pipe[PIPE_WRITE_INDEX]);
-      close(temp_endpoint->token_pipe[PIPE_READ_INDEX]);
-      close(temp_endpoint->token_pipe[PIPE_WRITE_INDEX]);
+      /* close(temp_endpoint->admin_wr_pipe[PIPE_READ_INDEX]); */
+      /* close(temp_endpoint->admin_rd_pipe[PIPE_WRITE_INDEX]); */
+      /* close(temp_endpoint->token_pipe[PIPE_READ_INDEX]); */
+      /* close(temp_endpoint->token_pipe[PIPE_WRITE_INDEX]); */
 
       // Free temp_endpoint space
-      free(temp_endpoint);
+      /* free(temp_endpoint); */
     }
   }
 
   // Child process behavior
   while(child_process) {
-
+    pthread_join(token_thread, NULL);
+    break;
   }
 
   // Parent process behavior
   while(!child_process) {
+    /* message *a = message_create(int destination, char *body); */
 
+    // Write a test message to the pipeline
+    printf("Writing message to pipe...\n");
+    write(endpoint_list_head->endp->token_pipe[PIPE_WRITE_INDEX], "Test Byte", 10);
+
+    while(1);
   }
 
+  printf("Exiting...");
   return 0;
 }
 
 // Token passing thread
 void *token_ring_passer(void *endpoint_descriptor) {
   endpoint *endpoint_description = endpoint_descriptor;
-
   char msg_buffer[MESSAGE_BUFFER_SIZE];
 
   int token_id = endpoint_description->token_id;
