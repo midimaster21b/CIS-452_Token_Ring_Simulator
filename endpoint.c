@@ -86,7 +86,7 @@ endpoint_list *endpoint_list_add(endpoint_list *endpoint_list_head, endpoint *to
   token_endpoint_list_item->prev = NULL;
 
   // Empty list
-  if(endpoint_list_head) {
+  if(endpoint_list_head == NULL) {
 
     // Item loops back to itself when it is the only item present
     token_endpoint_list_item->next = token_endpoint_list_item;
