@@ -171,6 +171,11 @@ endpoint_list *endpoint_list_add(endpoint_list *endpoint_list_head, endpoint *to
       // Return new head
       return temp_head;
     }
+
+    // TODO: WHAT IS THIS LOCATION FOR???
+    else {
+      return temp_head;
+    }
   }
 }
 

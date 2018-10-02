@@ -21,14 +21,16 @@
 void *token_ring_passer(void *endpoint_descriptor);
 
 int child_process = 0;
+int pid, parent_pid;
 int token_id = -1;
-int process_pid = -1;
 pthread_t admin_thread, token_thread;
 
 int main() {
+  int wraparound_fd[2];
+  int temp_rd_old;
+  int temp_rd;
   int num_endpoints;
   int x;
-  int pid, parent_pid;
   endpoint_list *endpoint_list_head = NULL;
   endpoint *temp_endpoint;
 
@@ -52,11 +54,33 @@ int main() {
   // Prompt user
   printf("You have requested %d endpoints. Creating now...\n", num_endpoints);
 
+  if(pipe(wraparound_fd) != 0) {
+    printf("ERROR: Couldn't create the wraparound pipe.\n");
+  }
+
   // Create the appropriate endpoints
   for(x=0; x<num_endpoints; x++) {
     printf("Creating endpoint %d...\n", x);
 
     temp_endpoint = create_endpoint(x);
+
+    // Put read from previous node into current node, but save current node rd
+    temp_rd_old = temp_endpoint->token_pipe[PIPE_READ_INDEX];
+    temp_endpoint->token_pipe[PIPE_READ_INDEX] = temp_rd;
+    temp_rd = temp_rd_old;
+
+    // If first element
+    if(x == 0) {
+      temp_endpoint->token_pipe[PIPE_READ_INDEX] = wraparound_fd[PIPE_READ_INDEX];
+    }
+
+    // Else if last element
+    else if(x == num_endpoints - 1) {
+      /* wraparound_wr_fd = temp_endpoint->token_pipe[PIPE_WRITE_INDEX]; */
+      // ERROR: THIS DOESN'T CLOSE OLD PIPE, JUST REPLACES WITH THE WRAPAROUND!!!
+      // TODO: FIX THIS!!!!
+      temp_endpoint->token_pipe[PIPE_WRITE_INDEX] = wraparound_fd[PIPE_WRITE_INDEX];
+    }
 
     // Handle error in endpoint creation
     if(temp_endpoint == NULL) {
@@ -88,13 +112,13 @@ int main() {
 
       // Clean up any and all resources used, but unnecessary for child processes
       // Close unused pipe
-      close(temp_endpoint->admin_wr_pipe[PIPE_WRITE_INDEX]);
-      close(temp_endpoint->admin_rd_pipe[PIPE_READ_INDEX]);
+      /* close(temp_endpoint->admin_wr_pipe[PIPE_WRITE_INDEX]); */
+      /* close(temp_endpoint->admin_rd_pipe[PIPE_READ_INDEX]); */
 
       // Free temp_endpoint space
-      free(temp_endpoint);
-      free(admin_wr_pipes);
-      free(admin_rd_pipes);
+      /* free(temp_endpoint); */
+      /* free(admin_wr_pipes); */
+      /* free(admin_rd_pipes); */
 
       pthread_create(&token_thread, NULL, token_ring_passer, temp_endpoint);
 
@@ -126,21 +150,26 @@ int main() {
   // Child process behavior
   while(child_process) {
     pthread_join(token_thread, NULL);
-    break;
+
+    printf("Child thread exited...\n");
+    while(1);
   }
 
   // Parent process behavior
   while(!child_process) {
     /* message *a = message_create(int destination, char *body); */
 
+    endpoint_list_print(endpoint_list_head);
+
     // Write a test message to the pipeline
     printf("Writing message to pipe...\n");
     write(endpoint_list_head->endp->token_pipe[PIPE_WRITE_INDEX], "Test Byte", 10);
 
+    printf("Parent busy waiting...\n");
     while(1);
   }
 
-  printf("Exiting...");
+  printf("Exiting...\n");
   return 0;
 }
 
@@ -153,16 +182,39 @@ void *token_ring_passer(void *endpoint_descriptor) {
   int token_rd_pipe = endpoint_description->token_pipe[PIPE_READ_INDEX];
   int token_wr_pipe = endpoint_description->token_pipe[PIPE_WRITE_INDEX];
 
-  // Read
-  // TODO: Use return value to determine the number of bytes read
-  read(token_rd_pipe, msg_buffer, sizeof(msg_buffer));
+  printf("Token ring passer: %d\n", pid);
 
-  // Process
-  // TODO: This section
-  /* write(admin_wr_pipe, msg, strlen(msg_buffer) + 1); */
-  printf("Endpoint %d (%d): %s", token_id, process_pid, msg_buffer);
-  sleep(1);
+  while(1) {
+    // Read
+    // TODO: Use return value to determine the number of bytes read
+    read(token_rd_pipe, msg_buffer, sizeof(msg_buffer));
 
-  // Write
-  write(token_wr_pipe, msg_buffer, strlen(msg_buffer) + 1);
+    // Process
+    // TODO: This section
+    /* write(admin_wr_pipe, msg, strlen(msg_buffer) + 1); */
+    printf("Endpoint %d (%d): %s\n", token_id, pid, msg_buffer);
+    sleep(1);
+
+    // Write
+    write(token_wr_pipe, msg_buffer, strlen(msg_buffer)+1);
+  }
+}
+
+void *admin_thread_handler(void *endpoint_descriptor) {
+  endpoint *endpoint_description = endpoint_descriptor;
+
+  /* while(1) { */
+  /*   // Read */
+  /*   // TODO: Use return value to determine the number of bytes read */
+  /*   read(admin_rd_pipe, msg_buffer, sizeof(msg_buffer)); */
+
+  /*   // Process */
+  /*   // TODO: This section */
+  /*   /\* write(admin_wr_pipe, msg, strlen(msg_buffer) + 1); *\/ */
+  /*   printf("Endpoint %d (%d): %s\n", token_id, pid, msg_buffer); */
+  /*   sleep(1); */
+
+  /*   // Write */
+  /*   write(token_wr_pipe, msg_buffer, strlen(msg_buffer)); */
+  /* } */
 }
