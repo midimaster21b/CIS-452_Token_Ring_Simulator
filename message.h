@@ -18,6 +18,8 @@
 // Message definition
 typedef struct message {
   int message_id;
+  /* char *header; */
+  /* char *body; */
   char header[MESSAGE_MAX_HEADER_LENGTH];
   char body[MESSAGE_MAX_BODY_LENGTH];
 } message;
@@ -40,5 +42,14 @@ typedef struct message_queue {
  */
 message *message_create(int destination, char *body);
 
+/** @brief Print the message provided in a descriptive manner.
+ *
+ *  Prints out a useful string-based representation of the
+ *  message provided to standard output.
+ *
+ *  @param msg The message to be printed to standard output.
+ *  @return Void.
+ */
+void message_print(message *msg);
 
 #endif // __MESSAGE_H__

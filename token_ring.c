@@ -38,7 +38,7 @@ int main() {
   int *admin_rd_pipes, *admin_wr_pipes;
 
   // Endpoint pipes (child process)
-  int admin_rd_pipe, admin_wr_pipe, token_rd_pipe, token_wr_pipe;
+  /* int admin_rd_pipe, admin_wr_pipe, token_rd_pipe, token_wr_pipe; */
 
   // Welcome the user to the program
   printf("Welcome to the CIS 452 Token Ring Simulator\n");
@@ -98,10 +98,10 @@ int main() {
 
       // Perform and necessary setup and cleanup for child process running
       // Get pipe assignments from endpoint
-      admin_rd_pipe = temp_endpoint->admin_wr_pipe[PIPE_READ_INDEX];
-      admin_wr_pipe = temp_endpoint->admin_rd_pipe[PIPE_WRITE_INDEX];
-      token_rd_pipe = temp_endpoint->token_pipe[PIPE_READ_INDEX];
-      token_wr_pipe = temp_endpoint->token_pipe[PIPE_WRITE_INDEX];
+      /* admin_rd_pipe = temp_endpoint->admin_wr_pipe[PIPE_READ_INDEX]; */
+      /* admin_wr_pipe = temp_endpoint->admin_rd_pipe[PIPE_WRITE_INDEX]; */
+      /* token_rd_pipe = temp_endpoint->token_pipe[PIPE_READ_INDEX]; */
+      /* token_wr_pipe = temp_endpoint->token_pipe[PIPE_WRITE_INDEX]; */
 
       // Get token id
       token_id = temp_endpoint->token_id;
@@ -157,15 +157,25 @@ int main() {
 
   // Parent process behavior
   while(!child_process) {
-    /* message *a = message_create(int destination, char *body); */
 
-    endpoint_list_print(endpoint_list_head);
+    char *msg_body = malloc(MESSAGE_MAX_BODY_LENGTH);
+
+    // Get the user's input
+    printf("Please enter a message for the network: ");
+    fgets(msg_body, MESSAGE_MAX_BODY_LENGTH, stdin);
+
+    /* printf("Message received: %s (%p)\n", msg_body, msg_body); */
+
+    // Create the message to be passed to the network
+    message *a = message_create(5, msg_body);
+
+    // Print the created message to stdout
+    /* message_print(a); */
 
     // Write a test message to the pipeline
-    printf("Writing message to pipe...\n");
-    write(endpoint_list_head->endp->token_pipe[PIPE_WRITE_INDEX], "Test Byte", 10);
+    write(endpoint_list_head->endp->token_pipe[PIPE_WRITE_INDEX], a, sizeof(message));
 
-    printf("Parent busy waiting...\n");
+    // Busy wait for now
     while(1);
   }
 
@@ -176,45 +186,32 @@ int main() {
 // Token passing thread
 void *token_ring_passer(void *endpoint_descriptor) {
   endpoint *endpoint_description = endpoint_descriptor;
-  char msg_buffer[MESSAGE_BUFFER_SIZE];
+  message *msg_buffer = malloc(sizeof(message));
 
   int token_id = endpoint_description->token_id;
   int token_rd_pipe = endpoint_description->token_pipe[PIPE_READ_INDEX];
   int token_wr_pipe = endpoint_description->token_pipe[PIPE_WRITE_INDEX];
 
-  printf("Token ring passer: %d\n", pid);
+  int rd_len = 0;
 
   while(1) {
     // Read
-    // TODO: Use return value to determine the number of bytes read
-    read(token_rd_pipe, msg_buffer, sizeof(msg_buffer));
+    rd_len = read(token_rd_pipe, msg_buffer, sizeof(message));
 
     // Process
     // TODO: This section
-    /* write(admin_wr_pipe, msg, strlen(msg_buffer) + 1); */
-    printf("Endpoint %d (%d): %s\n", token_id, pid, msg_buffer);
+    // TODO: Handle incomplete reads (not 100% of bytes in first read)
+    printf("\nEndpoint %d (%d) read in %d of %ld bytes\n", token_id, pid, rd_len, sizeof(message));
+    printf("Endpoint %d header: %s\n", token_id, msg_buffer->header);
+    printf("Endpoint %d body: %s", token_id, msg_buffer->body);
     sleep(1);
 
     // Write
-    write(token_wr_pipe, msg_buffer, strlen(msg_buffer)+1);
+    write(token_wr_pipe, msg_buffer, sizeof(message));
   }
 }
 
 void *admin_thread_handler(void *endpoint_descriptor) {
-  endpoint *endpoint_description = endpoint_descriptor;
-
-  /* while(1) { */
-  /*   // Read */
-  /*   // TODO: Use return value to determine the number of bytes read */
-  /*   read(admin_rd_pipe, msg_buffer, sizeof(msg_buffer)); */
-
-  /*   // Process */
-  /*   // TODO: This section */
-  /*   /\* write(admin_wr_pipe, msg, strlen(msg_buffer) + 1); *\/ */
-  /*   printf("Endpoint %d (%d): %s\n", token_id, pid, msg_buffer); */
-  /*   sleep(1); */
-
-  /*   // Write */
-  /*   write(token_wr_pipe, msg_buffer, strlen(msg_buffer)); */
-  /* } */
+  /* endpoint *endpoint_description = endpoint_descriptor; */
+  return NULL;
 }

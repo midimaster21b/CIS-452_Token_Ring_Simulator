@@ -27,15 +27,17 @@ message *message_create(int destination, char *body) {
   }
 
   // Copy the body string into the message struct
+  /* retval->body = malloc(MESSAGE_MAX_BODY_LENGTH); */
   strncpy(retval->body, body, MESSAGE_MAX_BODY_LENGTH - 1);
 
   // Get the header string
-  char *header = malloc(sizeof(MESSAGE_MAX_HEADER_LENGTH));
-  sprintf(header, "%d", destination);
+  /* char *header = malloc(sizeof(MESSAGE_MAX_HEADER_LENGTH)); */
+  /* retval->header = malloc(sizeof(MESSAGE_MAX_HEADER_LENGTH)); */
+  sprintf(retval->header, "%d", destination);
 
-  // Fill in the header of the message
-  strncpy(retval->header, header, MESSAGE_MAX_HEADER_LENGTH - 1);
-  free(header);
+  // Copy string into message struct and free intermediary
+  /* strncpy(retval->header, header, MESSAGE_MAX_HEADER_LENGTH - 1); */
+  /* free(header); */
 
   // Assign a message id to the message
   retval->message_id = msg_count++;
@@ -44,3 +46,9 @@ message *message_create(int destination, char *body) {
   return retval;
 }
 
+void message_print(message *msg) {
+  printf("Message provided: (%p)\n", msg);
+  printf("ID: %d (%p)\n", msg->message_id, &(msg->message_id));
+  printf("Header: %s (%p)\n", msg->header, msg->header);
+  printf("Body: %s (%p)\n", msg->body, msg->body);
+}
