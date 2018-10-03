@@ -22,8 +22,7 @@ typedef struct endpoint {
   int pid;
   int token_id;
   int token_pipe[2];
-  int admin_wr_pipe[2];
-  int admin_rd_pipe[2];
+  int admin_pipe[2];
 } endpoint;
 
 // Doubly linked list for management purposes

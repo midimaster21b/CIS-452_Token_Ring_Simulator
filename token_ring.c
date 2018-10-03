@@ -38,7 +38,7 @@ int main() {
   FILE *output_file;
 
   // Admin pipes (parent process)
-  int *admin_rd_pipes, *admin_wr_pipes;
+  int *admin_pipes;
 
   // Welcome the user to the program
   printf("Welcome to the CIS 452 Token Ring Simulator\n");
@@ -48,8 +48,7 @@ int main() {
   num_endpoints = request_num_endpoints();
 
   // Allocate space for admin control pipes
-  admin_rd_pipes = malloc(num_endpoints * sizeof(int));
-  admin_wr_pipes = malloc(num_endpoints * sizeof(int));
+  admin_pipes = malloc(num_endpoints * sizeof(int));
 
   // Prompt user
   printf("You have requested %d endpoints. Creating now...\n", num_endpoints);
@@ -140,8 +139,7 @@ int main() {
       endpoint_list_head = endpoint_list_add(endpoint_list_head, temp_endpoint);
 
       // Add control pipe endpoints to array
-      admin_wr_pipes[endpoint_iterator-1] = temp_endpoint->admin_wr_pipe[PIPE_WRITE_INDEX];
-      admin_rd_pipes[endpoint_iterator-1] = temp_endpoint->admin_rd_pipe[PIPE_READ_INDEX];
+      admin_pipes[endpoint_iterator-1] = temp_endpoint->admin_pipe[PIPE_WRITE_INDEX];
 
       // Close unused pipes
       /* close(temp_endpoint->admin_wr_pipe[PIPE_READ_INDEX]); */
@@ -206,7 +204,7 @@ int main() {
       msg = message_create(destination_id, msg_body);
 
       // Write the message to the admin pipe
-      write(admin_wr_pipes[source_id - 1], msg, sizeof(message));
+      write(admin_pipes[source_id - 1], msg, sizeof(message));
     }
   }
 
@@ -313,7 +311,7 @@ void *admin_thread_handler(void *endpoint_descriptor) {
   endpoint *endpoint_description = endpoint_descriptor;
 
   // Thread descriptor variables
-  int admin_rd_pipe = endpoint_description->admin_wr_pipe[PIPE_READ_INDEX];
+  int admin_rd_pipe = endpoint_description->admin_pipe[PIPE_READ_INDEX];
 
   // Message variables
   message *msg_buffer = malloc(sizeof(message));
