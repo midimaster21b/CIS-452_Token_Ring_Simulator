@@ -71,34 +71,39 @@ int main() {
     printf("Creating endpoint %d...\n", endpoint_iterator);
     temp_endpoint = create_endpoint(endpoint_iterator);
 
-    // Put read from previous node into current node, but save current node rd
+    // Handle error in endpoint creation
+    if(temp_endpoint == NULL) {
+      // TODO: Clean up any and all resources used and report the error to the user
+      printf("Error: Unable to create endpoint %d.\n", endpoint_iterator);
+      exit(1);
+    }
+
+    // Connect read node from previous node, save current read node for next connection
     temp_pipe_fd[1] = temp_endpoint->token_pipe[PIPE_READ_INDEX];
     temp_endpoint->token_pipe[PIPE_READ_INDEX] = temp_pipe_fd[0];
     temp_pipe_fd[0] = temp_pipe_fd[1];
 
     // If first element
     if(endpoint_iterator == 1) {
+      // Use read endpoint of wraparound pipe
       temp_endpoint->token_pipe[PIPE_READ_INDEX] = wraparound_fd[PIPE_READ_INDEX];
     }
 
     // Else if last element
     else if(endpoint_iterator == num_endpoints) {
-      // ERROR: THIS DOESN'T CLOSE OLD PIPE, JUST REPLACES WITH THE WRAPAROUND!!!
-      // TODO: FIX THIS!!!!
-      temp_endpoint->token_pipe[PIPE_WRITE_INDEX] = wraparound_fd[PIPE_WRITE_INDEX];
-    }
+      // Close original pipe associated with last element
+      /* close(temp_pipe_fd[0]); // Read end */
+      /* close(temp_endpoint->token_pipe[PIPE_WRITE_INDEX]); // Write end */
 
-    // Handle error in endpoint creation
-    if(temp_endpoint == NULL) {
-      // Clean up any and all resources used and report the error to the user
-      printf("Error: Unable to create endpoint.\n");
+      // Use write end of wraparound pipe
+      temp_endpoint->token_pipe[PIPE_WRITE_INDEX] = wraparound_fd[PIPE_WRITE_INDEX];
     }
 
     // Child behavior
     // TODO: FREE UNUSED MEMORY AND RESOURCES
     // TODO: CLOSE ALL PIPES WITH AUTHORITY/OWNERSHIP!
     // TODO: Spawn off thread to handle control/admin interaction (pthread_create)
-    else if(temp_endpoint->pid == 0) {
+    if(temp_endpoint->pid == 0) {
       // Set child process flag
       child_process_flag = 1;
 
