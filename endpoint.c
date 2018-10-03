@@ -74,7 +74,10 @@ endpoint *create_endpoint(int id) {
 endpoint_list *endpoint_list_add(endpoint_list *endpoint_list_head, endpoint *token_endpoint) {
   // Create an endpoint list struct for the supplied endpoint
   endpoint_list *token_endpoint_list_item = malloc(sizeof(endpoint_list));
-  token_endpoint_list_item->endp = token_endpoint;
+
+  // Copy endpoint data into the new data structure
+  token_endpoint_list_item->endp = malloc(sizeof(endpoint));
+  memcpy(token_endpoint_list_item->endp, token_endpoint, sizeof(endpoint));
   token_endpoint_list_item->next = NULL;
   token_endpoint_list_item->prev = NULL;
 

@@ -119,7 +119,22 @@ int main() {
       close(temp_endpoint->admin_pipe[PIPE_WRITE_INDEX]);
 
       // Close wraparound pipe (if able)
-      // TODO: THIS!!!
+      // If first element
+      if(endpoint_iterator == ENDPOINT_BASE_ADDR) {
+	close(wraparound_fd[PIPE_WRITE_INDEX]);
+      }
+
+      // Else if last element
+      else if(endpoint_iterator >= num_endpoints + ENDPOINT_BASE_ADDR - 1) {
+	close(wraparound_fd[PIPE_READ_INDEX]);
+      }
+
+      // If not first or last
+      else {
+	// Close the wraparound pipe
+	close(wraparound_fd[PIPE_WRITE_INDEX]);
+	close(wraparound_fd[PIPE_READ_INDEX]);
+      }
 
       // Close all open admin pipes
       int pipe_iterator;
@@ -141,20 +156,22 @@ int main() {
     // Parent behavior
     // TODO: Spawn off thread to handle user interaction (pthread_create)
     else {
-      // Add the endpoint to the list
-      endpoint_list_head = endpoint_list_add(endpoint_list_head, temp_endpoint);
-
       // Add control pipe endpoints to array ([1] assignment)
       admin_pipes[endpoint_iterator-ENDPOINT_BASE_ADDR] = temp_endpoint->admin_pipe[PIPE_WRITE_INDEX];
 
       // Close unused pipes
-      /* close(temp_endpoint->admin_wr_pipe[PIPE_READ_INDEX]); */
-      /* close(temp_endpoint->admin_rd_pipe[PIPE_WRITE_INDEX]); */
+      // Close read end of admin pipe (only used by child)
+      close(temp_endpoint->admin_pipe[PIPE_READ_INDEX]);
+
+      // Close token pipe (only used by child)
       /* close(temp_endpoint->token_pipe[PIPE_READ_INDEX]); */
       /* close(temp_endpoint->token_pipe[PIPE_WRITE_INDEX]); */
 
-      // Free temp_endpoint space
-      /* free(temp_endpoint); */
+      // Add the endpoint to the list
+      endpoint_list_head = endpoint_list_add(endpoint_list_head, temp_endpoint);
+
+      // Free temp_endpoint space (already copied into the endpoint_list)
+      free(temp_endpoint);
     }
   }
 
@@ -247,6 +264,7 @@ int main() {
     }
 
     // Free parent specific memory
+    // Free admin pipes parent [1]
     free(admin_pipes);
   }
 
