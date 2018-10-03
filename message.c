@@ -94,15 +94,20 @@ message *message_queue_get_message(message_queue *head) {
 }
 
 message_queue *message_queue_put_message(message *msg, message_queue *head) {
+
   if(msg == NULL) {
+    printf("WARNING: Null message supplied to message_queue_put_message.\n");
     return head;
   }
 
   // Allocate space for new message
   message_queue *msg_element = malloc(sizeof(message_queue));
 
+  printf("New message queue element malloc'd %p\n", msg_element);
+
   // Assign the message to the new message queue element
-  msg_element->msg = msg;
+  msg_element->msg = malloc(sizeof(message));
+  msg_element->msg = memcpy(msg_element->msg, msg, sizeof(message));
   msg_element->next = NULL;
 
   // If empty message queue supplied
@@ -119,11 +124,14 @@ message_queue *message_queue_put_message(message *msg, message_queue *head) {
 
     // Iterate to last element in the queue
     while(temp->next != NULL) {
+      printf("Iterating...\n");
       temp = temp->next;
     }
 
+    printf("Temp->next pre:  %p\n", temp->next);
     // Append new message element
     temp->next = msg_element;
+    printf("Temp->next post: %p\n", temp->next);
 
     return head;
   }
@@ -134,4 +142,33 @@ void message_print(message *msg) {
   printf("ID: %d (%p)\n", msg->message_id, &(msg->message_id));
   printf("Header: %s (%p)\n", msg->header, msg->header);
   printf("Body: %s (%p)\n", msg->body, msg->body);
+}
+
+void message_queue_print(message_queue *head) {
+  if(head == NULL) {
+    printf("Message queue empty.\n");
+  }
+
+  else {
+    message_queue *temp = head;
+
+    do {
+      printf("%d (%p) -> ", temp->msg->message_id, temp);
+      temp = temp->next;
+    } while(temp != NULL);
+
+    printf("NULL\n");
+  }
+}
+
+void message_queue_print_element(message_queue *head) {
+  if(head == NULL) {
+    printf("Message queue element empty.\n");
+  }
+
+  else {
+    printf("Message queue element (%p)\n", head);
+    printf("Message: %p\n", head->msg);
+    printf("Next: %p\n", head->next);
+  }
 }

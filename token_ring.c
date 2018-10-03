@@ -92,8 +92,8 @@ int main() {
     // Else if last element
     else if(endpoint_iterator == num_endpoints) {
       // Close original pipe associated with last element
-      /* close(temp_pipe_fd[0]); // Read end */
-      /* close(temp_endpoint->token_pipe[PIPE_WRITE_INDEX]); // Write end */
+      close(temp_pipe_fd[0]); // Read end
+      close(temp_endpoint->token_pipe[PIPE_WRITE_INDEX]); // Write end
 
       // Use write end of wraparound pipe
       temp_endpoint->token_pipe[PIPE_WRITE_INDEX] = wraparound_fd[PIPE_WRITE_INDEX];
@@ -187,11 +187,11 @@ int main() {
     while(1) {
       // Get the user's input
       // TODO: Validate user input
-      printf("Please enter a node to send a message to: ");
-      fgets(msg_header_to, MESSAGE_MAX_HEADER_LENGTH, stdin);
-
       printf("Please enter a node to send a message from: ");
       fgets(msg_header_from, MESSAGE_MAX_HEADER_LENGTH, stdin);
+
+      printf("Please enter a node to send a message to: ");
+      fgets(msg_header_to, MESSAGE_MAX_HEADER_LENGTH, stdin);
 
       printf("Please enter a message for the network: ");
       fgets(msg_body, MESSAGE_MAX_BODY_LENGTH, stdin);
@@ -280,7 +280,7 @@ void *token_ring_passer(void *endpoint_descriptor) {
 
     // Blank message received
     else {
-      // If a message is available, retrieve it from the message queue
+      // If a message is available
       if(msg_queue != NULL) {
 	printf("Endpoint %d: Putting message on blank token.\n", token_id);
 
@@ -290,8 +290,9 @@ void *token_ring_passer(void *endpoint_descriptor) {
 	// Get rid of the old message
 	free(msg_buffer);
 
-	// Create a new message
+	// Retrieve it from the message queue
 	msg_buffer = message_queue_get_message(msg_queue);
+	message_print(msg_buffer);
       }
 
       // Pass the message that was received
@@ -323,7 +324,14 @@ void *admin_thread_handler(void *endpoint_descriptor) {
     read(admin_rd_pipe, msg_buffer, sizeof(message));
 
     // Process
+    printf("\n----DEBUGGING---\n");
     msg_queue = message_queue_put_message(msg_buffer, msg_queue);
+
+    message_queue_print(msg_queue);
+
+    printf("\n----END DEBUGGING---\n");
+
+
 
     // Write (if necessary)
   }

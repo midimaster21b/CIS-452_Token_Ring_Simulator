@@ -108,4 +108,24 @@ message_queue *message_queue_put_message(message *msg, message_queue *head);
  */
 void message_print(message *msg);
 
+/** @brief Print the message queue provided in a descriptive manner.
+ *
+ *  Prints out a useful string-based representation of the
+ *  message queue provided to standard output.
+ *
+ *  @param head The message queue to be printed to standard output.
+ *  @return Void.
+ */
+void message_queue_print(message_queue *head);
+
+/** @brief Print the message queue element provided in a descriptive manner.
+ *
+ *  Prints out a useful string-based representation of the
+ *  message queue element provided to standard output.
+ *
+ *  @param head The message queue element to be printed to standard output.
+ *  @return Void.
+ */
+void message_queue_print_element(message_queue *head);
+
 #endif // __MESSAGE_H__
