@@ -34,3 +34,20 @@ The endpoint library is written to enable easy creation, deletion, and managemen
 ## Output
 
 1. The output for all token ring nodes is an output file, while the main admin process uses standard output and standard input.
+
+## Child process identification
+
+- As child processes are forked, the return value from fork is used to differentiate between the parent and child processes. After differentiation, the global child_process_flag identifies a process as a child process.
+
+# Object Lifecycles
+
+Proper lifecycle expectations vs. terminated (using a signal)
+
+[1] admin_pipes: A list of write endpoints for the admin process to use.
+
+    1. Creation: Malloc'd using the specified number endpoints requested by the user.
+    1. Fork'd: An instance remains in memory for both the parent and child processes.
+    1. Child destruction: The child free's the memory prior to admin and token thread creation.
+    1. Parent destruction: The parent free's the memory when exiting the application. [TODO!]
+
+[2] temp_endpoint
