@@ -34,14 +34,12 @@ int main() {
   int x;
   endpoint_list *endpoint_list_head = NULL;
   endpoint *temp_endpoint;
-
   int destination_id = 0;
+  char *output_filename = "output.txt";
+  FILE *output_file;
 
   // Admin pipes (parent process)
   int *admin_rd_pipes, *admin_wr_pipes;
-
-  // Endpoint pipes (child process)
-  /* int admin_rd_pipe, admin_wr_pipe, token_rd_pipe, token_wr_pipe; */
 
   // Welcome the user to the program
   printf("Welcome to the CIS 452 Token Ring Simulator\n");
@@ -61,10 +59,16 @@ int main() {
     printf("ERROR: Couldn't create the wraparound pipe.\n");
   }
 
-  // Create the appropriate endpoints
-  for(x=1; x<=num_endpoints; x++) {
-    printf("Creating endpoint %d...\n", x);
+  // Open handle to output file
+  output_file = fopen(output_filename, "a");
 
+  /////////////////////////////////////
+  // Create the appropriate endpoints
+  /////////////////////////////////////
+  for(x=1; x<=num_endpoints; x++) {
+
+    // Create the endpoint
+    printf("Creating endpoint %d...\n", x);
     temp_endpoint = create_endpoint(x);
 
     // Put read from previous node into current node, but save current node rd
@@ -98,12 +102,8 @@ int main() {
       // Set child process flag
       child_process = 1;
 
-      // Perform and necessary setup and cleanup for child process running
-      // Get pipe assignments from endpoint
-      /* admin_rd_pipe = temp_endpoint->admin_wr_pipe[PIPE_READ_INDEX]; */
-      /* admin_wr_pipe = temp_endpoint->admin_rd_pipe[PIPE_WRITE_INDEX]; */
-      /* token_rd_pipe = temp_endpoint->token_pipe[PIPE_READ_INDEX]; */
-      /* token_wr_pipe = temp_endpoint->token_pipe[PIPE_WRITE_INDEX]; */
+      // Redirect stdout at output file
+      dup2(fileno(output_file), STDOUT_FILENO);
 
       // Get token id
       token_id = temp_endpoint->token_id;
