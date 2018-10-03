@@ -24,6 +24,7 @@ int child_process = 0;
 int pid, parent_pid;
 int token_id = -1;
 pthread_t admin_thread, token_thread;
+message_queue *msg_queue = NULL;
 
 int main() {
   int wraparound_fd[2];
@@ -33,6 +34,8 @@ int main() {
   int x;
   endpoint_list *endpoint_list_head = NULL;
   endpoint *temp_endpoint;
+
+  int destination_id = 0;
 
   // Admin pipes (parent process)
   int *admin_rd_pipes, *admin_wr_pipes;
@@ -59,7 +62,7 @@ int main() {
   }
 
   // Create the appropriate endpoints
-  for(x=0; x<num_endpoints; x++) {
+  for(x=1; x<=num_endpoints; x++) {
     printf("Creating endpoint %d...\n", x);
 
     temp_endpoint = create_endpoint(x);
@@ -70,13 +73,12 @@ int main() {
     temp_rd = temp_rd_old;
 
     // If first element
-    if(x == 0) {
+    if(x == 1) {
       temp_endpoint->token_pipe[PIPE_READ_INDEX] = wraparound_fd[PIPE_READ_INDEX];
     }
 
     // Else if last element
-    else if(x == num_endpoints - 1) {
-      /* wraparound_wr_fd = temp_endpoint->token_pipe[PIPE_WRITE_INDEX]; */
+    else if(x == num_endpoints) {
       // ERROR: THIS DOESN'T CLOSE OLD PIPE, JUST REPLACES WITH THE WRAPAROUND!!!
       // TODO: FIX THIS!!!!
       temp_endpoint->token_pipe[PIPE_WRITE_INDEX] = wraparound_fd[PIPE_WRITE_INDEX];
@@ -159,18 +161,20 @@ int main() {
   while(!child_process) {
 
     char *msg_body = malloc(MESSAGE_MAX_BODY_LENGTH);
+    char *msg_header = malloc(MESSAGE_MAX_HEADER_LENGTH);
 
     // Get the user's input
+    printf("Please enter a node to send a message to: ");
+    fgets(msg_header, MESSAGE_MAX_HEADER_LENGTH, stdin);
+
     printf("Please enter a message for the network: ");
     fgets(msg_body, MESSAGE_MAX_BODY_LENGTH, stdin);
 
-    /* printf("Message received: %s (%p)\n", msg_body, msg_body); */
+    destination_id = strtol(msg_header, NULL, 10);
 
     // Create the message to be passed to the network
-    message *a = message_create(5, msg_body);
-
-    // Print the created message to stdout
-    /* message_print(a); */
+    message *a = message_create(destination_id, msg_body);
+    /* message *a = message_create(5, msg_body); */
 
     // Write a test message to the pipeline
     write(endpoint_list_head->endp->token_pipe[PIPE_WRITE_INDEX], a, sizeof(message));
@@ -186,12 +190,16 @@ int main() {
 // Token passing thread
 void *token_ring_passer(void *endpoint_descriptor) {
   endpoint *endpoint_description = endpoint_descriptor;
-  message *msg_buffer = malloc(sizeof(message));
 
+  // Thread descriptor variables
   int token_id = endpoint_description->token_id;
   int token_rd_pipe = endpoint_description->token_pipe[PIPE_READ_INDEX];
   int token_wr_pipe = endpoint_description->token_pipe[PIPE_WRITE_INDEX];
 
+  // Message variables
+  message *msg_buffer = malloc(sizeof(message));
+  int msg_sent_flag = 0;
+  int msg_dest = 0;
   int rd_len = 0;
 
   while(1) {
@@ -202,8 +210,57 @@ void *token_ring_passer(void *endpoint_descriptor) {
     // TODO: This section
     // TODO: Handle incomplete reads (not 100% of bytes in first read)
     printf("\nEndpoint %d (%d) read in %d of %ld bytes\n", token_id, pid, rd_len, sizeof(message));
-    printf("Endpoint %d header: %s\n", token_id, msg_buffer->header);
-    printf("Endpoint %d body: %s", token_id, msg_buffer->body);
+    /* printf("Endpoint %d header: %s\n", token_id, msg_buffer->header); */
+    /* printf("Endpoint %d body: %s", token_id, msg_buffer->body); */
+
+    // Non-blank message received
+    if(strlen(msg_buffer->header) > 0) {
+
+      msg_dest = strtol(msg_buffer->header, NULL, 10);
+
+      // Handle message reception for this node
+      if(msg_dest == token_id) {
+	printf("Endpoint %d: Found message for node %d: %s", token_id, token_id, msg_buffer->body);
+
+	// Acknowledge reception of message (Assign zero to header destination)
+	/* strncpy(msg_buffer->header, "0", 2); */
+	message_acknowledge(msg_buffer);
+      }
+
+      // Handle message successfully sent
+      else if(msg_sent_flag) {
+	if(msg_dest == 0) {
+	  printf("Endpoint %d: Message successfully sent and acknowledged.\n", token_id);
+	}
+	else {
+	  printf("Endpoint %d: Message failed to be received.\n", token_id);
+	}
+      }
+
+      // Not intended destination, nor did this node send anything
+      else {
+	printf("Endpoint %d: Passing token ahead...\n", token_id);
+      }
+    }
+
+    // Blank message received
+    else {
+      // If a message is available, retrieve it from the message queue
+      if(msg_queue != NULL) {
+	// Get rid of the old message
+	free(msg_buffer);
+
+	// Create a new message
+	msg_buffer = message_queue_get_message(msg_queue);
+      }
+
+      // Pass the message that was received
+      else {
+	// do nothing.
+      }
+    }
+
+    // Wait for 1 second (allows progress to be tracked by humans)
     sleep(1);
 
     // Write
