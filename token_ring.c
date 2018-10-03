@@ -23,7 +23,7 @@ void *token_ring_passer(void *endpoint_descriptor);
 void *admin_thread_handler(void *endpoint_descriptor);
 
 int child_process_flag = 0;
-int pid;
+int admin_running = 1;
 pthread_t admin_thread, token_thread;
 message_queue *msg_queue = NULL;
 
@@ -33,11 +33,13 @@ int main() {
   int num_endpoints;
   int endpoint_iterator;
   endpoint_list *endpoint_list_head = NULL;
-  endpoint *temp_endpoint;
   char *output_filename = "output.txt";
   FILE *output_file;
 
-  // Admin pipes (parent process)
+  // A temporary endpoint used to describe the currently operating node [2]
+  endpoint *temp_endpoint;
+
+  // Admin pipe descriptors for communicating with nodes [1]
   int *admin_pipes;
 
   // Welcome the user to the program
@@ -106,20 +108,29 @@ int main() {
       // Set child process flag
       child_process_flag = 1;
 
-      // Redirect stdout at output file
+      // Redirect stdout to output file
       dup2(fileno(output_file), STDOUT_FILENO);
 
       // Get child and parent PID
-      pid = getpid();
+      temp_endpoint->pid = getpid();
 
       // Clean up any and all resources used, but unnecessary for child processes
-      // Close unused pipe
+      // Close unused admin end of admin pipe
       close(temp_endpoint->admin_pipe[PIPE_WRITE_INDEX]);
 
+      // Close wraparound pipe (if able)
+      // TODO: THIS!!!
+
+      // Close all open admin pipes
+      int pipe_iterator;
+      for(pipe_iterator=0; pipe_iterator<num_endpoints; pipe_iterator++) {
+	close(admin_pipes[pipe_iterator]);
+      }
+
       // Free temp_endpoint space
-      /* free(temp_endpoint); */
       free(admin_pipes); // Child free [1]
 
+      // Create threads for the admin and token handlers
       pthread_create(&admin_thread, NULL, admin_thread_handler, temp_endpoint);
       pthread_create(&token_thread, NULL, token_ring_passer, temp_endpoint);
 
@@ -133,8 +144,8 @@ int main() {
       // Add the endpoint to the list
       endpoint_list_head = endpoint_list_add(endpoint_list_head, temp_endpoint);
 
-      // Add control pipe endpoints to array
-      admin_pipes[endpoint_iterator-1] = temp_endpoint->admin_pipe[PIPE_WRITE_INDEX];
+      // Add control pipe endpoints to array ([1] assignment)
+      admin_pipes[endpoint_iterator-ENDPOINT_BASE_ADDR] = temp_endpoint->admin_pipe[PIPE_WRITE_INDEX];
 
       // Close unused pipes
       /* close(temp_endpoint->admin_wr_pipe[PIPE_READ_INDEX]); */
@@ -148,7 +159,7 @@ int main() {
   }
 
   // Child process behavior
-  while(child_process_flag) {
+  if(child_process_flag) {
     pthread_join(admin_thread, NULL);
     pthread_join(token_thread, NULL);
 
@@ -157,8 +168,7 @@ int main() {
   }
 
   // Parent process behavior
-  while(!child_process_flag) {
-
+  else {
     printf("Admin process: %d\n", getpid());
 
     // Admin variables
@@ -171,23 +181,43 @@ int main() {
     // Write the first message to the pipeline
     write(endpoint_list_head->endp->token_pipe[PIPE_WRITE_INDEX], msg, sizeof(message));
 
+    const char *quit_text = "quit";
+
     // Allocate space for the message body and header
     char *msg_body = malloc(MESSAGE_MAX_BODY_LENGTH);
     char *msg_header_from = malloc(MESSAGE_MAX_HEADER_LENGTH);
     char *msg_header_to = malloc(MESSAGE_MAX_HEADER_LENGTH);
 
     // Main admin loop
-    while(1) {
+    while(admin_running) {
       // Get the user's input
       // TODO: Validate user input
       printf("Please enter a node to send a message from: ");
       fgets(msg_header_from, MESSAGE_MAX_HEADER_LENGTH, stdin);
 
+      // if the user attempted to exit the program using exit keyword
+      if(strncmp(msg_header_from, quit_text, 4) == 0) {
+	admin_running = 0;
+	break;
+      }
+
       printf("Please enter a node to send a message to: ");
       fgets(msg_header_to, MESSAGE_MAX_HEADER_LENGTH, stdin);
 
+      // if the user attempted to exit the program using exit keyword
+      if(strncmp(msg_header_to, quit_text, 4) == 0) {
+	admin_running = 0;
+	break;
+      }
+
       printf("Please enter a message for the network: ");
       fgets(msg_body, MESSAGE_MAX_BODY_LENGTH, stdin);
+
+      // if the user attempted to exit the program using exit keyword
+      if(strncmp(msg_body, quit_text, 4) == 0) {
+	admin_running = 0;
+	break;
+      }
 
       // Get the destination node id from the string provided by the user
       destination_id = strtol(msg_header_to, NULL, 10);
@@ -201,9 +231,28 @@ int main() {
       // Write the message to the admin pipe
       write(admin_pipes[source_id - 1], msg, sizeof(message));
     }
+
+    /*******************************
+     * Parent synchronous cleanup.
+     *******************************/
+    // Perform initial synchronous cleanup
+    // Free current scope memory
+    free(msg_body);
+    free(msg_header_from);
+    free(msg_header_to);
+
+    // Free parent specific pipes
+    for(endpoint_iterator=0; endpoint_iterator<num_endpoints; endpoint_iterator++) {
+      close(admin_pipes[endpoint_iterator]);
+    }
+
+    // Free parent specific memory
+    free(admin_pipes);
   }
 
-  printf("Exiting...\n");
+  // Perform synchronous exit cleanup
+  printf("Process %d: Exiting...\n", getpid());
+
   return 0;
 }
 
@@ -228,7 +277,7 @@ void *token_ring_passer(void *endpoint_descriptor) {
 
     // Process
     // TODO: Handle incomplete reads (not 100% of bytes in first read)
-    printf("\nEndpoint %d (%d) read in %d of %ld bytes\n", token_id, pid, rd_len, sizeof(message));
+    printf("\nEndpoint %d (%d) read in %d of %ld bytes\n", token_id, endpoint_description->pid, rd_len, sizeof(message));
 
     // Non-blank message received
     if(strlen(msg_buffer->header) > 0) {
