@@ -44,6 +44,27 @@ typedef struct message_queue {
  */
 message *message_create(int destination, char *body);
 
+/** @brief Acknowledges a messages reception by modifying the header.
+ *
+ *  Modifies the header field to represent a received message.
+ *
+ *  @param head The message that will be acknowledged.
+ *  @return Void.
+ */
+void message_acknowledge(message *msg);
+
+/** @brief Get the oldest message on the message queue supplied.
+ *
+ *  Returns a message pointer for the oldest message on the
+ *  message queue supplied. If the supplied message queue is
+ *  NULL, a blank message is returned.
+ *
+ *  @param head The message queue to get a message from.
+ *  @return The oldest message on the message queue supplied.
+ */
+message *message_queue_get_message(message_queue *head);
+
+
 /** @brief Print the message provided in a descriptive manner.
  *
  *  Prints out a useful string-based representation of the

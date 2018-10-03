@@ -48,6 +48,28 @@ message *message_create(int destination, char *body) {
   return retval;
 }
 
+void message_acknowledge(message *msg) {
+  // Place a zero in the header to acknowledge reception of a message
+  msg->header[0] = '0';
+  msg->header[1] = '\0';
+}
+
+message *message_queue_get_message(message_queue *head) {
+  message *retval;
+
+  // If non-empty message_queue, return oldest pushed message
+  if(head != NULL) {
+    retval = head->msg;
+  }
+
+  // Otherwise return an empty message
+  else {
+    retval = message_create(-1, "");
+  }
+
+  return retval;
+}
+
 void message_print(message *msg) {
   printf("Message provided: (%p)\n", msg);
   printf("ID: %d (%p)\n", msg->message_id, &(msg->message_id));
