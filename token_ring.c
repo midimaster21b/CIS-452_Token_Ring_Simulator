@@ -17,26 +17,23 @@
 #include "message.h"
 
 #define MESSAGE_BUFFER_SIZE 1000
-#define SIMULATION_SLEEP_TIME 2
+#define SIMULATION_SLEEP_TIME 1
 
 void *token_ring_passer(void *endpoint_descriptor);
 void *admin_thread_handler(void *endpoint_descriptor);
 
-int child_process = 0;
-int pid, parent_pid;
-int token_id = -1;
+int child_process_flag = 0;
+int pid;
 pthread_t admin_thread, token_thread;
 message_queue *msg_queue = NULL;
 
 int main() {
   int wraparound_fd[2];
-  int temp_rd_old;
-  int temp_rd;
+  int temp_pipe_fd[2];
   int num_endpoints;
-  int x;
+  int endpoint_iterator;
   endpoint_list *endpoint_list_head = NULL;
   endpoint *temp_endpoint;
-  int destination_id = 0;
   char *output_filename = "output.txt";
   FILE *output_file;
 
@@ -67,24 +64,24 @@ int main() {
   /////////////////////////////////////
   // Create the appropriate endpoints
   /////////////////////////////////////
-  for(x=1; x<=num_endpoints; x++) {
+  for(endpoint_iterator=1; endpoint_iterator<=num_endpoints; endpoint_iterator++) {
 
     // Create the endpoint
-    printf("Creating endpoint %d...\n", x);
-    temp_endpoint = create_endpoint(x);
+    printf("Creating endpoint %d...\n", endpoint_iterator);
+    temp_endpoint = create_endpoint(endpoint_iterator);
 
     // Put read from previous node into current node, but save current node rd
-    temp_rd_old = temp_endpoint->token_pipe[PIPE_READ_INDEX];
-    temp_endpoint->token_pipe[PIPE_READ_INDEX] = temp_rd;
-    temp_rd = temp_rd_old;
+    temp_pipe_fd[1] = temp_endpoint->token_pipe[PIPE_READ_INDEX];
+    temp_endpoint->token_pipe[PIPE_READ_INDEX] = temp_pipe_fd[0];
+    temp_pipe_fd[0] = temp_pipe_fd[1];
 
     // If first element
-    if(x == 1) {
+    if(endpoint_iterator == 1) {
       temp_endpoint->token_pipe[PIPE_READ_INDEX] = wraparound_fd[PIPE_READ_INDEX];
     }
 
     // Else if last element
-    else if(x == num_endpoints) {
+    else if(endpoint_iterator == num_endpoints) {
       // ERROR: THIS DOESN'T CLOSE OLD PIPE, JUST REPLACES WITH THE WRAPAROUND!!!
       // TODO: FIX THIS!!!!
       temp_endpoint->token_pipe[PIPE_WRITE_INDEX] = wraparound_fd[PIPE_WRITE_INDEX];
@@ -102,17 +99,16 @@ int main() {
     // TODO: Spawn off thread to handle control/admin interaction (pthread_create)
     else if(temp_endpoint->pid == 0) {
       // Set child process flag
-      child_process = 1;
+      child_process_flag = 1;
 
       // Redirect stdout at output file
       dup2(fileno(output_file), STDOUT_FILENO);
 
       // Get token id
-      token_id = temp_endpoint->token_id;
+      /* token_id = temp_endpoint->token_id; */
 
       // Get child and parent PID
       pid = getpid();
-      parent_pid = getppid();
 
       // Clean up any and all resources used, but unnecessary for child processes
       // Close unused pipe
@@ -138,8 +134,8 @@ int main() {
       endpoint_list_head = endpoint_list_add(endpoint_list_head, temp_endpoint);
 
       // Add control pipe endpoints to array
-      admin_wr_pipes[x-1] = temp_endpoint->admin_wr_pipe[PIPE_WRITE_INDEX];
-      admin_rd_pipes[x-1] = temp_endpoint->admin_rd_pipe[PIPE_READ_INDEX];
+      admin_wr_pipes[endpoint_iterator-1] = temp_endpoint->admin_wr_pipe[PIPE_WRITE_INDEX];
+      admin_rd_pipes[endpoint_iterator-1] = temp_endpoint->admin_rd_pipe[PIPE_READ_INDEX];
 
       // Close unused pipes
       /* close(temp_endpoint->admin_wr_pipe[PIPE_READ_INDEX]); */
@@ -153,7 +149,7 @@ int main() {
   }
 
   // Child process behavior
-  while(child_process) {
+  while(child_process_flag) {
     pthread_join(admin_thread, NULL);
     pthread_join(token_thread, NULL);
 
@@ -162,9 +158,12 @@ int main() {
   }
 
   // Parent process behavior
-  while(!child_process) {
+  while(!child_process_flag) {
 
     printf("Admin process: %d\n", getpid());
+
+    // Admin variables
+    int destination_id, source_id;
 
     // Start the token ring sequence (bootstrap)
     // Create a blank message to directly start the token ring
@@ -175,28 +174,33 @@ int main() {
 
     // Allocate space for the message body and header
     char *msg_body = malloc(MESSAGE_MAX_BODY_LENGTH);
-    char *msg_header = malloc(MESSAGE_MAX_HEADER_LENGTH);
+    char *msg_header_from = malloc(MESSAGE_MAX_HEADER_LENGTH);
+    char *msg_header_to = malloc(MESSAGE_MAX_HEADER_LENGTH);
 
     // Main admin loop
     while(1) {
       // Get the user's input
       // TODO: Validate user input
       printf("Please enter a node to send a message to: ");
-      fgets(msg_header, MESSAGE_MAX_HEADER_LENGTH, stdin);
+      fgets(msg_header_to, MESSAGE_MAX_HEADER_LENGTH, stdin);
+
+      printf("Please enter a node to send a message from: ");
+      fgets(msg_header_from, MESSAGE_MAX_HEADER_LENGTH, stdin);
 
       printf("Please enter a message for the network: ");
       fgets(msg_body, MESSAGE_MAX_BODY_LENGTH, stdin);
 
       // Get the destination node id from the string provided by the user
-      destination_id = strtol(msg_header, NULL, 10);
+      destination_id = strtol(msg_header_to, NULL, 10);
+
+      // Get the source node id from the string provided by the user
+      source_id = strtol(msg_header_from, NULL, 10);
 
       // Create the message to be sent
       msg = message_create(destination_id, msg_body);
 
-      // Add the message to the message queue
       // Write the message to the admin pipe
-      /* msg_queue = message_queue_put_message(msg, msg_queue); */
-      write(admin_wr_pipes[0], msg, sizeof(message));
+      write(admin_wr_pipes[source_id - 1], msg, sizeof(message));
     }
   }
 
@@ -294,7 +298,7 @@ void *token_ring_passer(void *endpoint_descriptor) {
       }
     }
 
-    // Wait for 1 second (allows progress to be tracked by humans)
+    // Wait for predefined second (allows progress to be tracked by humans)
     sleep(SIMULATION_SLEEP_TIME);
 
     // Write
