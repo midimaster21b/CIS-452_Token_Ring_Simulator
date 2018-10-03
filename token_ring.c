@@ -16,8 +16,8 @@
 #include "endpoint.h"
 #include "message.h"
 
-#define MESSAGE_BUFFER_SIZE 1000
 #define SIMULATION_SLEEP_TIME 1
+#define ENDPOINT_BASE_ADDR 1
 
 void *token_ring_passer(void *endpoint_descriptor);
 void *admin_thread_handler(void *endpoint_descriptor);
@@ -47,7 +47,7 @@ int main() {
   // Get the desired number of endpoints to create from the user
   num_endpoints = request_num_endpoints();
 
-  // Allocate space for admin control pipes
+  // Allocate space for admin control pipes [1]
   admin_pipes = malloc(num_endpoints * sizeof(int));
 
   // Prompt user
@@ -64,7 +64,7 @@ int main() {
   /////////////////////////////////////
   // Create the appropriate endpoints
   /////////////////////////////////////
-  for(endpoint_iterator=1; endpoint_iterator<=num_endpoints; endpoint_iterator++) {
+  for(endpoint_iterator=ENDPOINT_BASE_ADDR; endpoint_iterator<num_endpoints+ENDPOINT_BASE_ADDR; endpoint_iterator++) {
 
     // Create the endpoint
     printf("Creating endpoint %d...\n", endpoint_iterator);
@@ -83,15 +83,15 @@ int main() {
     temp_pipe_fd[0] = temp_pipe_fd[1];
 
     // If first element
-    if(endpoint_iterator == 1) {
+    if(endpoint_iterator == ENDPOINT_BASE_ADDR) {
       // Use read endpoint of wraparound pipe
       temp_endpoint->token_pipe[PIPE_READ_INDEX] = wraparound_fd[PIPE_READ_INDEX];
     }
 
     // Else if last element
-    else if(endpoint_iterator == num_endpoints) {
+    else if(endpoint_iterator >= num_endpoints + ENDPOINT_BASE_ADDR - 1) {
       // Close original pipe associated with last element
-      close(temp_pipe_fd[0]); // Read end
+      close(temp_pipe_fd[0]);                             // Read end from previous node
       close(temp_endpoint->token_pipe[PIPE_WRITE_INDEX]); // Write end
 
       // Use write end of wraparound pipe
@@ -109,21 +109,16 @@ int main() {
       // Redirect stdout at output file
       dup2(fileno(output_file), STDOUT_FILENO);
 
-      // Get token id
-      /* token_id = temp_endpoint->token_id; */
-
       // Get child and parent PID
       pid = getpid();
 
       // Clean up any and all resources used, but unnecessary for child processes
       // Close unused pipe
-      /* close(temp_endpoint->admin_wr_pipe[PIPE_WRITE_INDEX]); */
-      /* close(temp_endpoint->admin_rd_pipe[PIPE_READ_INDEX]); */
+      close(temp_endpoint->admin_pipe[PIPE_WRITE_INDEX]);
 
       // Free temp_endpoint space
       /* free(temp_endpoint); */
-      /* free(admin_wr_pipes); */
-      /* free(admin_rd_pipes); */
+      free(admin_pipes); // Child free [1]
 
       pthread_create(&admin_thread, NULL, admin_thread_handler, temp_endpoint);
       pthread_create(&token_thread, NULL, token_ring_passer, temp_endpoint);
