@@ -103,8 +103,6 @@ message_queue *message_queue_put_message(message *msg, message_queue *head) {
   // Allocate space for new message
   message_queue *msg_element = malloc(sizeof(message_queue));
 
-  printf("New message queue element malloc'd %p\n", msg_element);
-
   // Assign the message to the new message queue element
   msg_element->msg = malloc(sizeof(message));
   msg_element->msg = memcpy(msg_element->msg, msg, sizeof(message));
@@ -112,26 +110,21 @@ message_queue *message_queue_put_message(message *msg, message_queue *head) {
 
   // If empty message queue supplied
   if(head == NULL) {
-    printf("Returning new message queue %p\n", msg_element);
     return msg_element;
   }
 
   // Append message to queue
   else {
-    message_queue *temp = head;
-
-    printf("Appending message to message queue %p\n", head);
+    // Assign iterator to head
+    message_queue *iterator = head;
 
     // Iterate to last element in the queue
-    while(temp->next != NULL) {
-      printf("Iterating...\n");
-      temp = temp->next;
+    while(iterator->next != NULL) {
+      iterator = iterator->next;
     }
 
-    printf("Temp->next pre:  %p\n", temp->next);
     // Append new message element
-    temp->next = msg_element;
-    printf("Temp->next post: %p\n", temp->next);
+    iterator->next = msg_element;
 
     return head;
   }
@@ -150,12 +143,14 @@ void message_queue_print(message_queue *head) {
   }
 
   else {
-    message_queue *temp = head;
+    // Assign iterator to head
+    message_queue *iterator = head;
 
+    // Iterate through all elements after head
     do {
-      printf("%d (%p) -> ", temp->msg->message_id, temp);
-      temp = temp->next;
-    } while(temp != NULL);
+      printf("%d (%p) -> ", iterator->msg->message_id, iterator);
+      iterator = iterator->next;
+    } while(iterator != NULL);
 
     printf("NULL\n");
   }

@@ -245,9 +245,9 @@ void *token_ring_passer(void *endpoint_descriptor) {
 
       // Handle message reception for this node
       if(msg_dest == token_id) {
-	printf("Endpoint %d: Found message: %s", token_id, msg_buffer->body);
+	printf("Endpoint %d: Received message: %s", token_id, msg_buffer->body);
 
-	// Acknowledge reception of message (Assign zero to header destination)
+	// Acknowledge reception of message
 	message_acknowledge(msg_buffer);
       }
 
@@ -282,7 +282,7 @@ void *token_ring_passer(void *endpoint_descriptor) {
     else {
       // If a message is available
       if(msg_queue != NULL) {
-	printf("Endpoint %d: Putting message on blank token.\n", token_id);
+	printf("Endpoint %d: Putting new message on blank token.\n", token_id);
 
 	// set the message sent flag
 	msg_sent_flag = 1;
@@ -292,7 +292,6 @@ void *token_ring_passer(void *endpoint_descriptor) {
 
 	// Retrieve it from the message queue
 	msg_buffer = message_queue_get_message(msg_queue);
-	message_print(msg_buffer);
       }
 
       // Pass the message that was received
@@ -302,7 +301,7 @@ void *token_ring_passer(void *endpoint_descriptor) {
       }
     }
 
-    // Wait for predefined second (allows progress to be tracked by humans)
+    // Wait for predefined seconds (allows progress to be tracked by humans)
     sleep(SIMULATION_SLEEP_TIME);
 
     // Write
@@ -324,14 +323,7 @@ void *admin_thread_handler(void *endpoint_descriptor) {
     read(admin_rd_pipe, msg_buffer, sizeof(message));
 
     // Process
-    printf("\n----DEBUGGING---\n");
     msg_queue = message_queue_put_message(msg_buffer, msg_queue);
-
-    message_queue_print(msg_queue);
-
-    printf("\n----END DEBUGGING---\n");
-
-
 
     // Write (if necessary)
   }
