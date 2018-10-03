@@ -17,8 +17,10 @@
 #include "message.h"
 
 #define MESSAGE_BUFFER_SIZE 1000
+#define SIMULATION_SLEEP_TIME 2
 
 void *token_ring_passer(void *endpoint_descriptor);
+void *admin_thread_handler(void *endpoint_descriptor);
 
 int child_process = 0;
 int pid, parent_pid;
@@ -122,6 +124,7 @@ int main() {
       /* free(admin_wr_pipes); */
       /* free(admin_rd_pipes); */
 
+      pthread_create(&admin_thread, NULL, admin_thread_handler, temp_endpoint);
       pthread_create(&token_thread, NULL, token_ring_passer, temp_endpoint);
 
       // Exit the for loop
@@ -135,8 +138,8 @@ int main() {
       endpoint_list_head = endpoint_list_add(endpoint_list_head, temp_endpoint);
 
       // Add control pipe endpoints to array
-      admin_wr_pipes[x] = temp_endpoint->admin_wr_pipe[PIPE_WRITE_INDEX];
-      admin_rd_pipes[x] = temp_endpoint->admin_rd_pipe[PIPE_READ_INDEX];
+      admin_wr_pipes[x-1] = temp_endpoint->admin_wr_pipe[PIPE_WRITE_INDEX];
+      admin_rd_pipes[x-1] = temp_endpoint->admin_rd_pipe[PIPE_READ_INDEX];
 
       // Close unused pipes
       /* close(temp_endpoint->admin_wr_pipe[PIPE_READ_INDEX]); */
@@ -151,6 +154,7 @@ int main() {
 
   // Child process behavior
   while(child_process) {
+    pthread_join(admin_thread, NULL);
     pthread_join(token_thread, NULL);
 
     printf("Child thread exited...\n");
@@ -160,27 +164,40 @@ int main() {
   // Parent process behavior
   while(!child_process) {
 
+    printf("Admin process: %d\n", getpid());
+
+    // Start the token ring sequence (bootstrap)
+    // Create a blank message to directly start the token ring
+    message *msg = message_create(-1, NULL);
+
+    // Write the first message to the pipeline
+    write(endpoint_list_head->endp->token_pipe[PIPE_WRITE_INDEX], msg, sizeof(message));
+
+    // Allocate space for the message body and header
     char *msg_body = malloc(MESSAGE_MAX_BODY_LENGTH);
     char *msg_header = malloc(MESSAGE_MAX_HEADER_LENGTH);
 
-    // Get the user's input
-    printf("Please enter a node to send a message to: ");
-    fgets(msg_header, MESSAGE_MAX_HEADER_LENGTH, stdin);
+    // Main admin loop
+    while(1) {
+      // Get the user's input
+      // TODO: Validate user input
+      printf("Please enter a node to send a message to: ");
+      fgets(msg_header, MESSAGE_MAX_HEADER_LENGTH, stdin);
 
-    printf("Please enter a message for the network: ");
-    fgets(msg_body, MESSAGE_MAX_BODY_LENGTH, stdin);
+      printf("Please enter a message for the network: ");
+      fgets(msg_body, MESSAGE_MAX_BODY_LENGTH, stdin);
 
-    destination_id = strtol(msg_header, NULL, 10);
+      // Get the destination node id from the string provided by the user
+      destination_id = strtol(msg_header, NULL, 10);
 
-    // Create the message to be passed to the network
-    message *a = message_create(destination_id, msg_body);
-    /* message *a = message_create(5, msg_body); */
+      // Create the message to be sent
+      msg = message_create(destination_id, msg_body);
 
-    // Write a test message to the pipeline
-    write(endpoint_list_head->endp->token_pipe[PIPE_WRITE_INDEX], a, sizeof(message));
-
-    // Busy wait for now
-    while(1);
+      // Add the message to the message queue
+      // Write the message to the admin pipe
+      /* msg_queue = message_queue_put_message(msg, msg_queue); */
+      write(admin_wr_pipes[0], msg, sizeof(message));
+    }
   }
 
   printf("Exiting...\n");
@@ -207,23 +224,20 @@ void *token_ring_passer(void *endpoint_descriptor) {
     rd_len = read(token_rd_pipe, msg_buffer, sizeof(message));
 
     // Process
-    // TODO: This section
     // TODO: Handle incomplete reads (not 100% of bytes in first read)
     printf("\nEndpoint %d (%d) read in %d of %ld bytes\n", token_id, pid, rd_len, sizeof(message));
-    /* printf("Endpoint %d header: %s\n", token_id, msg_buffer->header); */
-    /* printf("Endpoint %d body: %s", token_id, msg_buffer->body); */
 
     // Non-blank message received
     if(strlen(msg_buffer->header) > 0) {
 
+      // Get message destination from string
       msg_dest = strtol(msg_buffer->header, NULL, 10);
 
       // Handle message reception for this node
       if(msg_dest == token_id) {
-	printf("Endpoint %d: Found message for node %d: %s", token_id, token_id, msg_buffer->body);
+	printf("Endpoint %d: Found message %s", token_id, msg_buffer->body);
 
 	// Acknowledge reception of message (Assign zero to header destination)
-	/* strncpy(msg_buffer->header, "0", 2); */
 	message_acknowledge(msg_buffer);
       }
 
@@ -231,7 +245,21 @@ void *token_ring_passer(void *endpoint_descriptor) {
       else if(msg_sent_flag) {
 	if(msg_dest == 0) {
 	  printf("Endpoint %d: Message successfully sent and acknowledged.\n", token_id);
+
+	  // Clear the message sent flag
+	  msg_sent_flag = 0;
+
+	  // Finalize message
+	  printf("Message queue before: %p\n", msg_queue);
+	  printf("Message queue next before: %p\n", msg_queue->next);
+	  msg_queue = message_complete(msg_buffer, msg_queue);
+	  printf("Message queue after: %p\n", msg_queue);
+
+	  // Fill the message buffer with a new blank message
+	  msg_buffer = message_create(-1, NULL);
 	}
+
+	// Handle message not acknowledged
 	else {
 	  printf("Endpoint %d: Message failed to be received.\n", token_id);
 	}
@@ -247,6 +275,11 @@ void *token_ring_passer(void *endpoint_descriptor) {
     else {
       // If a message is available, retrieve it from the message queue
       if(msg_queue != NULL) {
+	printf("Endpoint %d: Putting message on blank token.\n", token_id);
+
+	// set the message sent flag
+	msg_sent_flag = 1;
+
 	// Get rid of the old message
 	free(msg_buffer);
 
@@ -257,11 +290,12 @@ void *token_ring_passer(void *endpoint_descriptor) {
       // Pass the message that was received
       else {
 	// do nothing.
+	printf("Endpoint %d: Blank token found.\n", token_id);
       }
     }
 
     // Wait for 1 second (allows progress to be tracked by humans)
-    sleep(1);
+    sleep(SIMULATION_SLEEP_TIME);
 
     // Write
     write(token_wr_pipe, msg_buffer, sizeof(message));
@@ -269,6 +303,21 @@ void *token_ring_passer(void *endpoint_descriptor) {
 }
 
 void *admin_thread_handler(void *endpoint_descriptor) {
-  /* endpoint *endpoint_description = endpoint_descriptor; */
-  return NULL;
+  endpoint *endpoint_description = endpoint_descriptor;
+
+  // Thread descriptor variables
+  int admin_rd_pipe = endpoint_description->admin_wr_pipe[PIPE_READ_INDEX];
+
+  // Message variables
+  message *msg_buffer = malloc(sizeof(message));
+
+  while(1) {
+    // Read
+    read(admin_rd_pipe, msg_buffer, sizeof(message));
+
+    // Process
+    msg_queue = message_queue_put_message(msg_buffer, msg_queue);
+
+    // Write (if necessary)
+  }
 }
