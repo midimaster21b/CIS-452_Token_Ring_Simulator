@@ -56,6 +56,7 @@ int main() {
 
   if(pipe(wraparound_fd) != 0) {
     printf("ERROR: Couldn't create the wraparound pipe.\n");
+    exit(1);
   }
 
   // Open handle to output file
@@ -239,7 +240,7 @@ void *token_ring_passer(void *endpoint_descriptor) {
 
       // Handle message reception for this node
       if(msg_dest == token_id) {
-	printf("Endpoint %d: Found message %s", token_id, msg_buffer->body);
+	printf("Endpoint %d: Found message: %s", token_id, msg_buffer->body);
 
 	// Acknowledge reception of message (Assign zero to header destination)
 	message_acknowledge(msg_buffer);
@@ -254,10 +255,7 @@ void *token_ring_passer(void *endpoint_descriptor) {
 	  msg_sent_flag = 0;
 
 	  // Finalize message
-	  printf("Message queue before: %p\n", msg_queue);
-	  printf("Message queue next before: %p\n", msg_queue->next);
 	  msg_queue = message_complete(msg_buffer, msg_queue);
-	  printf("Message queue after: %p\n", msg_queue);
 
 	  // Fill the message buffer with a new blank message
 	  msg_buffer = message_create(-1, NULL);
