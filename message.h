@@ -48,10 +48,31 @@ message *message_create(int destination, char *body);
  *
  *  Modifies the header field to represent a received message.
  *
- *  @param head The message that will be acknowledged.
+ *  @param msg The message that will be acknowledged.
  *  @return Void.
  */
 void message_acknowledge(message *msg);
+
+/** @brief Clears the message supplied.
+ *
+ *  Clears the header and body of the supplied message.
+ *
+ *  @param msg The message that will be cleared.
+ *  @return Void.
+ */
+void message_clear(message *msg);
+
+/** @brief Clears the message from the message queue.
+ *
+ *  Removes the message from the message queue. This
+ *  function is to be used when the message has been
+ *  successfully delivered and acknowledged.
+ *
+ *  @param msg The message to be finalized.
+ *  @param head The message queue to be updated.
+ *  @return The new head pointer.
+ */
+message_queue *message_complete(message *msg, message_queue *head);
 
 /** @brief Get the oldest message on the message queue supplied.
  *
@@ -64,6 +85,18 @@ void message_acknowledge(message *msg);
  */
 message *message_queue_get_message(message_queue *head);
 
+/** @brief Append the message to the message queue.
+ *
+ *  Append the supplied message to the message queue provided.
+ *  If the supplied message queue is NULL, the message will be
+ *  put in a newly constructed message_queue struct as the
+ *  first element and the pointer will be returned.
+ *
+ *  @param msg The message to be appended.
+ *  @param head The message queue to be appeneded.
+ *  @return A pointer to the modified message queue.
+ */
+message_queue *message_queue_put_message(message *msg, message_queue *head);
 
 /** @brief Print the message provided in a descriptive manner.
  *

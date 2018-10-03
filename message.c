@@ -54,6 +54,29 @@ void message_acknowledge(message *msg) {
   msg->header[1] = '\0';
 }
 
+void message_clear(message *msg) {
+  // Clear the message
+  msg->header[0] = '\0';
+  msg->body[0] = '\0';
+}
+
+// NOTE: Assumes msg supplied == head->msg
+message_queue *message_complete(message *msg, message_queue *head) {
+  message_queue *temp = head;
+
+  // Move head forward
+  head = head->next;
+
+  // Free the old message queue entry
+  free(temp);
+
+  // Free old message
+  free(msg);
+
+  // Return a blank message
+  return head;
+}
+
 message *message_queue_get_message(message_queue *head) {
   message *retval;
 
@@ -64,10 +87,46 @@ message *message_queue_get_message(message_queue *head) {
 
   // Otherwise return an empty message
   else {
-    retval = message_create(-1, "");
+    retval = message_create(-1, NULL);
   }
 
   return retval;
+}
+
+message_queue *message_queue_put_message(message *msg, message_queue *head) {
+  if(msg == NULL) {
+    return head;
+  }
+
+  // Allocate space for new message
+  message_queue *msg_element = malloc(sizeof(message_queue));
+
+  // Assign the message to the new message queue element
+  msg_element->msg = msg;
+  msg_element->next = NULL;
+
+  // If empty message queue supplied
+  if(head == NULL) {
+    printf("Returning new message queue %p\n", msg_element);
+    return msg_element;
+  }
+
+  // Append message to queue
+  else {
+    message_queue *temp = head;
+
+    printf("Appending message to message queue %p\n", head);
+
+    // Iterate to last element in the queue
+    while(temp->next != NULL) {
+      temp = temp->next;
+    }
+
+    // Append new message element
+    temp->next = msg_element;
+
+    return head;
+  }
 }
 
 void message_print(message *msg) {
