@@ -2,9 +2,9 @@
 
 The design is broken down into two main process types, the admin process and the node process.
 
-The admin process is a single-threaded process in charge of receiving input from the user and sending control messages to the appropriate node processes.
+The admin process is a single-threaded process in charge of receiving input from the user and sending control messages to the appropriate node processes. The admin process also handles the startup of the program and is in charge of creating the node processes, ensuring the proper pipe connections are made, and starting the token ring with a blank message using the first node's writing pipe after the user requested number of nodes have been created and setup. This results in the first output being displayed as a read on the second node of an empty token.
 
-The node process is a double-threaded process. One thread handles the token ring network behavior of the node while the second thread handles communication with the admin process. The admin process has a write and read pipe that can be used to communicate with the admin process asynchronously.
+The node process is a double-threaded process. One thread handles the token ring network behavior of the node while the second thread handles communication with the admin process. The admin thread has a pipe that can be used to receive messages from the admin process and is in charge of handling control commands from the admin process. The token ring thread is in charge of reading the token from the preceding node, processing the token, and writing the token to the next node in the network.
 
 # Startup
 
