@@ -25,6 +25,12 @@ When a token is first read, it is checked to see if it is a blank token. If the 
 
 It's worth noting that if a single node has multiple messages in it's message queue and another node also has multiple messages in it's message queue the behavior of the network is to alternate between which node sends data. This behavior is due to the clearing of the token on successful sending and acknowledging a message instead of supplying the next message in the queue. This disallows any node in the network from monopolizing the networks token and prevents starvation of other nodes.
 
+# Shutdown process
+
+There are two main ways the program can be shutdown. The first is to type "quit" into the admin screen for any of the fields requested during the message creation process. The second method is to press CTRL+C in the admin interface.
+
+**TODO: THIS SECTION**
+
 # Major Libraries
 
 ## Message
