@@ -15,6 +15,16 @@ The node process is a double-threaded process. One thread handles the token ring
 1. A blank message is written to the base node's write pipe which begins the token traversing the token ring network.
 1. The remainder of the message queueing is handled by message queues that are independently managed by each of the nodes/processes' message handler thread.
 
+# Normal Operation
+
+The token ring network simulator works by passing a message between node processes using pipes. When the message being passed has a body and header that are zero length strings the message is considered blank and can be filled by any process which has a message in it's message queue. The message queue is implemented as a singlely linked list that is used as a FIFO message queue. If a message is available on the process's message queue and a blank message is read, the queue fills the message with it's oldest message and writes that message to it's token pipe write end.
+
+## Token Operation
+
+When a token is first read, it is checked to see if it is a blank token. If the token is blank, the node checks the queue for messages. If the node's queue contains any queued messages the token is filled with the oldest queued message and passed to the next node. If the node's queue is empty, then a blank node is passed to the next node. If the token received was not blank, the header is first checked to see if the current node is the destination node. If it is, the contents are read and appended to the output file and the header is changed to a single zero to acknowledge the message before being passed to the next node. If the node had previously sent a message and the header contains a single zero, the token is cleared and passed to the next node. If the token is not blank, doesn't match the current node as a destination, and a message wasn't previously sent from the current node, the token is simply passed to the next node in the ring.
+
+It's worth noting that if a single node has multiple messages in it's message queue and another node also has multiple messages in it's message queue the behavior of the network is to alternate between which node sends data. This behavior is due to the clearing of the token on successful sending and acknowledging a message instead of supplying the next message in the queue. This disallows any node in the network from monopolizing the networks token and prevents starvation of other nodes.
+
 # Major Libraries
 
 ## Message
