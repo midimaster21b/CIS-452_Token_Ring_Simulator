@@ -37,13 +37,19 @@ The endpoint library is written to enable easy creation, deletion, and managemen
 
 # Design Decisions
 
-## Input
-
 1. Limit message body length to an amount specified by the constant MESSAGE_MAX_BODY_LENGTH and the message header to an amount specified by the constant MESSAGE_MAX_HEADER_LENGTH. These constants are defined in the message library.
+1. The user admin interface is separate from the token ring node output. The output for all token ring nodes is an output file, while the main admin process uses standard output and standard input. This prevents the screen from filling up while the user is using the admin interface.
+1. Upon recognizing a successfully sent message from the current node, a blank token is passed to the next node. This prevents any one node from monopolizing the networks bandwidth.
+1. A quit keyword can be used to exit the program at any time.
+1. The admin process sends messages to children processes using a pipe for each specific node. These pipes are stored in the admin_pipes variable.
+1. A message structure was used to model the message that is passed between nodes.
+1. A message queue object is used to store all messages to be sent by a specific node. The message queue is created as a struct organized as a singlely linked list that is used as a FIFO buffer.
+1. Each message has a unique message_id.
+1. The admin process is the direct parent of all node processes.
+1. Each endpoint has a struct that describes everything about the node.
+1. A doubly linked list is used by the admin process to maintain an understanding of the organization of the network. This was intended to be used to diagnose issues with the network and potentially insert and remove nodes from the network in realtime. This structure is not used by the node processes.
+1. Each node process consists of two constantly running threads. One is the admin thread which waits for, and handles, information from the admin process and the other is the token ring thread which waits for the token to be read by this process, processes it, and writes the appropriate token to the output. The two threads were separated to allow dynamic reconfiguration of the nodes using the admin process and allow the restarting of the token process when appropriate.
 
-## Output
-
-1. The output for all token ring nodes is an output file, while the main admin process uses standard output and standard input.
 
 ## Child process identification
 
